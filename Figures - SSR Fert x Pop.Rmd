@@ -1,0 +1,448 @@
+---
+title: "SSR Nitrogen x Seeding Rate x Pesticide - Figures"
+author: "R.W. Webster"
+date: "2/16/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+Loading Packages
+```{r}
+library(ggplot2)
+library(cowplot)
+library(viridis)
+library(extrafont)
+loadfonts(device = "win")
+```
+Figure 1
+Map of Trials
+```{r}
+# Define objects for the all states and counties in the US
+AllCounty <- map_data("county")
+MainStates <- map_data("state")
+
+# Define the trial locations and create new data frame "locs" from these vectors
+names <- c("Hancock, WI", "Entrican, MI", "Wanatah, IN", "Inwood, IA", "Larchwood, IA", "Kanwha, IA", "Arlington, WI")
+lat <- c(44.1211, 43.3516, 41.4753, 43.3085, 43.4571, 42.9354, 43.3197)
+long <- c(-89.5386, -85.1755, -86.9913, -96.4402, -96.4373, -93.7936, -89.3309)
+Trial.Years <- c("2020", "2020 & 2021", "2020 & 2021", "2021", "2020 & 2021", "2020", "2021")
+Trial.Years <- factor(Trial.Years, levels = c("2020", "2021", "2020 & 2021"))
+#trial <- c("White Mold Developed","White Mold Developed","White Mold Did Not Developed","White Mold Did Not Developed","White Mold Did Not Developed")
+locs <- data.frame(names, lat, long)
+
+
+# Create the map in ggplot
+ggplot() + 
+  geom_polygon( data=AllCounty, aes(x=long, y=lat, group=group),
+                color="gray", fill="lightgray", size = .1 ) +
+  geom_polygon( data=MainStates, aes(x=long, y=lat, group=group),
+                color="black", fill="lightgray",  size = 1, alpha = 0.3) +
+  coord_cartesian(xlim=c(-100, -82), 
+                  ylim=c(37, 48)) +
+  geom_point(data=locs, aes(x=long, y=lat, col=Trial.Years), 
+             size=5) +
+  scale_color_manual(name="Year",values=c("#065470","#5bc8ef", "#c7effc"),labels=c("2020","2021","2020 & 2021")) +
+  geom_label(data=locs, aes(x=long, y=lat, label=names),
+             size=5, 
+             label.r = unit(0.2, "lines"),
+             label.size=.15, 
+             nudge_y=c(0.5,0.5,-0.5,-0.55,0.55, -0.5, -0.5), 
+             nudge_x=c(0.5, 0.65, 1.15, -1.3, -1.5, 0, 0.7)) +
+  labs(color="Year") +
+  theme_test() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank(),
+        legend.box.background = element_rect(color="black"),
+        legend.box.margin = margin(4,4,4,4),
+        legend.position = c(0.908, 0.9059), 
+        #legend.position = "none",
+        legend.key = element_blank(),
+        legend.title = element_text(size=12, face="bold", hjust=0.5),
+        legend.text = element_text(size=12, face="bold"))
+        #legend.text = element_blank())
+```
+
+Loading SAS Analysis Results
+```{r}
+comb.sr.df <- read.table (text="Pop	di.mean	di.se	di.letter	dix.mean	dix.se	dix.letter	ykg.mean	ykg.se	ybu.mean	ybu.se	y.letter
+247,000	4.83919	0.15407	b 	5.30715	0.2587	b 	4467.16	45.593	66.4263	0.678	b 
+395,000	6.09188	0.26	a 	7.04459	0.43721	a 	4692.8	45.6241	69.7814	0.6784	a ", header=T)
+  summary(comb.sr.df)
+  
+comb.fert.df <- read.table(text="Fert	di.mean	di.se	di.letter	dix.mean	dix.se	dix.letter	ykg.mean	ykg.se	ybu.mean	ybu.se	y.letter
+Base	5.38275	0.06697	a	5.47111	0.09857	b 	4616.89	45.7878	68.6528	0.6808	a
+High	5.47753	0.29902	a	6.83481	0.5427	a	4543.07	45.8283	67.5549	0.6815 b", header=T)
+  summary(comb.fert.df)
+  
+comb.fung.df <- read.table(text="Fung	di.mean	di.se	di.letter	dix.mean	dix.se	dix.letter	ykg.mean	ykg.se	ybu.mean	ybu.se	y.letter
+Lactofen_(V5)	5.49329	0.29621	b 	6.2207	0.49982	b 	4547.36	51.5296	67.6188	0.7662	bc 
+Boscalid_(R3)	4.56176	0.24591	c 	4.7529	0.37891	c 	4639.01	51.7617	68.9817	0.7697	ab 
+Boscalid_(Sporecaster)	4.77795	0.30665	bc 	4.7413	0.46254	c 	4659.07	57.3462	69.2799	0.8527	a 
+Non-Treated	7.28739	0.44466	a 	10.0597	0.897	a 	4474.46	51.5784	66.5349	0.767	c", header=T)
+  summary(comb.fung.df)
+  comb.fung.df$Fung <- factor(comb.fung.df$Fung, levels = c("Lactofen_(V5)", "Boscalid_(R3)", "Boscalid_(Sporecaster)", "Non-Treated"))
+  levels(comb.fung.df$Fung) <- gsub("_", "\n", levels(comb.fung.df$Fung))
+
+comb.sr.fert.fung.df <- read.table(text="Pop	Fert	Fung	Trt	di.mean	di.se	di.letter	dix.mean	dix.se	dix.letter	ykg.mean	ykg.se	ybu.mean	ybu.se	y.letter
+247,000	Base	Lactofen_(V5)	247000.No.Lactofen_(V5)	4.95732	0.52652	a	5.1467	0.78028	ab 	4463.73	81.3226	66.3752	1.2093	a
+247,000	Base	Boscalid_(R3)	247000.No.Boscalid_(R3)	3.79261	0.45591	a	3.8887	0.66707	b 	4523.57	82.3822	67.2652	1.225	a
+247,000	Base	Boscalid__(Sporecaster)	247000.No.Boscalid__(Sporecaster)	4.30083	0.50017	a	4.216	0.71098	b 	4610.59	88.421	68.559	1.3148	a
+247,000	Base	Non-Treated	247000.No.Non-Treated	6.44988	0.64345	a	7.3822	1.06949	a 	4451.45	81.3226	66.1928	1.2093	a
+395,000	Base	Lactofen_(V5)	395000.No.Lactofen_(V5)	6.35887	0.66482	a	7.1368	1.09564	b 	4723.49	81.3226	70.2377	1.2093	a
+395,000	Base	Boscalid_(R3)	395000.No.Boscalid_(R3)	5.43139	0.56722	a	5.3792	0.84726	b 	4712.04	81.3226	70.0678	1.2093	a
+395,000	Base	Boscalid__(Sporecaster)	395000.No.Boscalid__(Sporecaster)	4.91965	0.56491	a	3.0191	0.52167	c	4847.85	89.7722	72.0872	1.3349	a
+395,000	Base	Non-Treated	395000.No.Non-Treated	8.32955	0.83896	a	12.2681	1.80562	a 	4602.39	81.3226	68.4371	1.2093	a
+247,000	High	Lactofen_(V5)	247000.Yes.Lactofen_(V5)	4.4443	0.44443	a	4.0546	0.59964	b 	4384.51	84.2016	65.1972	1.2521	a
+247,000	High	Boscalid_(R3)	247000.Yes.Boscalid_(R3)	4.22412	0.50894	a	5.2597	0.98341	b 	4585.45	85.0326	68.1852	1.2644	a
+247,000	High	Boscalid__(Sporecaster)	247000.Yes.Boscalid__(Sporecaster)	5.08065	0.72046	a	5.2983	1.18262	b 	4393.36	92.2505	65.3288	1.3718	a
+247,000	High	Non-Treated	247000.Yes.Non-Treated	6.35614	0.78455	a	9.9841	1.86673	a 	4324.6	85.028	64.3066	1.2644	a
+395,000	High	Lactofen_(V5)	395000.Yes.Lactofen_(V5)	6.61436	0.79979	a	10.4461	1.95312	a 	4617.72	84.2016	68.6652	1.2521	a
+395,000	High	Boscalid_(R3)	395000.Yes.Boscalid_(R3)	5.0725	0.51162	a	4.8383	0.72176	b 	4734.99	84.2016	70.4087	1.2521	a
+395,000	High	Boscalid__(Sporecaster)	395000.Yes.Boscalid__(Sporecaster)	4.96824	0.68824	a	7.9369	1.73597	ab 	4784.48	92.2505	71.1447	1.3718	a
+395,000	High	Non-Treated	395000.Yes.Non-Treated	8.39597	0.94828	a	11.7437	1.96525	a 	4519.41	84.2016	67.2031	1.2521	a", header=T)
+  summary(comb.sr.fert.fung.df)
+  levels(comb.sr.fert.fung.df$Fung) <- gsub("__", "\n", levels(comb.sr.fert.fung.df$Fung))
+  levels(comb.sr.fert.fung.df$Fung) <- gsub("_", " ", levels(comb.sr.fert.fung.df$Fung))
+  comb.sr.fert.fung.df$Pop <- as.factor(comb.sr.fert.fung.df$Pop)
+  
+  levels(comb.fung.df$Fung) <- gsub("_", "\n", levels(comb.fung.df$Fung))
+comb.sr.fert.fung.NO.df <- subset(comb.sr.fert.fung.df, comb.sr.fert.fung.df$Fert=="Base")
+comb.sr.fert.fung.Yes.df <- subset(comb.sr.fert.fung.df, comb.sr.fert.fung.df$Fert=="High")
+
+```
+
+
+Figure 2 
+Disease Incidence Figures
+```{r}
+fig.sr.di <- ggplot(data=comb.sr.df, aes(x=Pop, y=di.mean)) + 
+        geom_bar(stat="identity",
+                 position="dodge",
+                 color="black", 
+                 size=0.75,
+                 fill = "#8cd3ff") + 
+        geom_text(aes(label=di.letter, 
+                      y = (di.mean + (di.se)) + 0.2),
+                  vjust=0,
+                  size=7) +
+        xlab(bquote(bold('Seeding Rate (seeds'~ha^-1*')'))) +
+        ylab("Sclerotinia Stem Rot\n Incidence (%)") +
+        #ggtitle("Seeding Rate - Disease Incidence (10 Site-years)") +
+        coord_cartesian(ylim = c(0.5, 10)) +
+        geom_errorbar(data=comb.sr.df,
+                      aes(ymin=pmax(pmax(di.mean-(di.se),0),0),                                    ymax=di.mean+(di.se),
+                          width=0.1)) +
+        theme_bw() +
+        theme(text = element_text(family="arial"),
+              plot.title = element_text(hjust = 0.5, 
+                                        face="bold", 
+                                        size=15), 
+              axis.text.x = element_text(face="bold",
+                                         size=14,
+                                         angle=0, 
+                                         vjust=0.5,
+                                         hjust=0.5, 
+                                         lineheight = 0.8),
+              axis.text.y = element_text(face="bold",
+                                         size=18),
+              axis.title.x = element_text(face="bold",
+                                  size=18), 
+              axis.title.y = element_text(face="bold",
+                                  size=18, 
+                                  margin = margin(t = 0, r = 10, b = 0, l = 0)))
+
+fig.fert.di <- ggplot(data=comb.fert.df, aes(x=Fert, y=di.mean)) + 
+        geom_bar(stat="identity",
+                 position="dodge",
+                 color="black", 
+                 size=0.75,
+                 fill = "#8cd3ff") + 
+        geom_text(aes(label=di.letter, 
+                      y = (di.mean + (di.se)) + 0.2),
+                  vjust=0,
+                  size=7) +
+        xlab("Soil Nitrogen Level") +
+        ylab("Sclerotinia Stem Rot\nIncidence (%)") +
+        coord_cartesian(ylim = c(0.5, 10)) +
+        geom_errorbar(data=comb.fert.df,
+                      aes(ymin=pmax(pmax(di.mean-(di.se),0),0),                                    ymax=di.mean+(di.se),
+                          width=0.1)) +
+        theme_bw() +
+        theme(text = element_text(family="arial"),
+              plot.title = element_text(hjust = 0.5, 
+                                        face="bold", 
+                                        size=15), 
+              axis.text.x = element_text(face="bold",
+                                         size=14,
+                                         angle=0, 
+                                         vjust=0.5,
+                                         hjust=0.5, 
+                                         lineheight = 0.8),
+              axis.text.y = element_text(face="bold",
+                                         size=18),
+              axis.title.x = element_text(face="bold",
+                                  size=18, 
+                                  margin = margin(t = 7, r = 0, b = 0, l = 0)), 
+              axis.title.y = element_text(face="bold",
+                                  size=18, 
+                                  margin = margin(t = 0, r = 10, b = 0, l = 0)))
+
+fig.fung.di <- ggplot(data=comb.fung.df, aes(x=Fung, y=di.mean)) + 
+        geom_bar(stat="identity",
+                 position="dodge",
+                 color="black", 
+                 size=0.75,
+                 fill = "#8cd3ff") + 
+        geom_text(aes(label=di.letter, 
+                      y = (di.mean + (di.se)) + 0.2),
+                  vjust=0,
+                  size=7) +
+        xlab("Pesticide Program") +
+        ylab("Sclerotinia Stem Rot\n Incidence (%)") +
+        #ggtitle("Fungicide Treatments - Disease Incidence (10 Site-years)") +  
+        coord_cartesian(ylim = c(0.5, 10)) +
+        geom_errorbar(data=comb.fung.df,
+                      aes(ymin=pmax(pmax(di.mean-(di.se),0),0),                                    ymax=di.mean+(di.se),
+                          width=0.1)) +
+        theme_bw() +
+        theme(text = element_text(family="arial"),
+              plot.title = element_text(hjust = 0.5, 
+                                        face="bold", 
+                                        size=15), 
+              axis.text.x = element_text(face="bold",
+                                         size=14,
+                                         angle=0, 
+                                         vjust=0.5,
+                                         hjust=0.5, 
+                                         lineheight = 0.8),
+              axis.text.y = element_text(face="bold",
+                                         size=17),
+              axis.title.x = element_text(face="bold",
+                                  size=18, 
+                                  margin = margin(t = 10, r = 0, b = 0, l = 0)), 
+              axis.title.y = element_text(face="bold",
+                                          size=18, 
+                                          margin = margin(t = 0, r = 10, b = 0, l = 0)))
+
+ggdraw() +
+  draw_plot(fig.sr.di, 0.07, 0.5, 0.44, 0.48) +
+  draw_plot(fig.fert.di, 0.535, 0.5, 0.44, 0.48) +
+  draw_plot(fig.fung.di, 0.07, 0, 0.91, 0.48) +
+  draw_plot_label(c("A", "B", "C"), c(0.04, 0.51, 0.04), c(1.01, 1.01, 0.51), size = 20)
+```
+
+Figure 3
+PopxFertxFung Figures - Disease Severity Index
+```{r}
+fig.sr.fung.no.dix <- ggplot(data=comb.sr.fert.fung.NO.df, aes(x=Pop, y=dix.mean, fill=Fung)) + 
+        geom_bar(stat="identity",
+                 position="dodge",
+                 color="black", 
+                 size=0.75) + 
+        geom_text(aes(label=dix.letter, 
+                      y = (dix.mean + (dix.se)) + 0.2),
+                  vjust=-0.2,
+                  size=7, 
+                  position=position_dodge(width=0.9)) +
+        xlab(bquote(bold('Seeding Rate (seeds'~ha^-1*')'))) +
+        ylab("Sclerotinia Stem Rot\nDisease Severity Index (%)") +
+        ggtitle("Base Soil Nitrogen") +
+        labs(fill = "Pesticide\nProgram") +  
+        coord_cartesian(ylim = c(1, 25)) +
+        geom_errorbar(data=comb.sr.fert.fung.NO.df,
+                      position=position_dodge(width=0.9),
+                      aes(ymin=pmax(pmax(dix.mean-(dix.se),0),0),                                    ymax=dix.mean+(dix.se),
+                          width=0.1)) +
+        scale_fill_viridis(option="mako", discrete=T) +
+        theme_bw() +
+        theme(text = element_text(family="arial"),
+              plot.title = element_text(hjust = 0.5, 
+                                        face="bold", 
+                                        size=16), 
+              axis.text.x = element_text(face="bold",
+                                         size=14,
+                                         angle=0, 
+                                         vjust=1,
+                                         hjust=0.5, 
+                                         lineheight = 0.8),
+              axis.text.y = element_text(face="bold",
+                                         size=18),
+              axis.title.x = element_text(face="bold",
+                                          size=14), 
+              axis.title.y = element_text(face="bold",
+                                          size=15, 
+                                          margin = margin(t = 0, r = 15, b = 0, l = 0)))
+#print(fig.sr.fung.no.dix)
+
+
+fig.sr.fung.yes.dix <- ggplot(data=comb.sr.fert.fung.Yes.df, aes(x=Pop, y=dix.mean, fill=Fung)) + 
+        geom_bar(stat="identity",
+                 position="dodge",
+                 color="black", 
+                 size=0.75) + 
+        geom_text(aes(label=dix.letter, 
+                      y = (dix.mean + (dix.se)) + 0.2),
+                  vjust=-0.2,
+                  size=7, 
+                  position=position_dodge(width=0.9)) +
+        xlab(bquote(bold('Seeding Rate (seeds'~ha^-1*')'))) +
+        ylab("Sclerotinia Stem Rot\nDisease Severity Index (%)") +
+        ggtitle("High Soil Nitrogen") +
+        labs(fill = "Pesticide\nProgram") +  
+        coord_cartesian(ylim = c(1, 25)) +
+        geom_errorbar(data=comb.sr.fert.fung.Yes.df,
+                      position=position_dodge(width=0.9),
+                      aes(ymin=pmax(pmax(dix.mean-(dix.se),0),0),                                    ymax=dix.mean+(dix.se),
+                          width=0.1)) +
+        scale_fill_viridis(option="mako", discrete=T) +
+        theme_bw() +
+        theme(text = element_text(family="arial"),
+              plot.title = element_text(hjust = 0.5, 
+                                        face="bold", 
+                                        size=16), 
+              axis.text.x = element_text(face="bold",
+                                         size=14,
+                                         angle=0, 
+                                         vjust=1,
+                                         hjust=0.5, 
+                                         lineheight = 0.8),
+              axis.text.y = element_text(face="bold",
+                                         size=18),
+              axis.title.x = element_text(face="bold",
+                                          size=14),  
+              axis.title.y = element_text(face="bold",
+                                          size=15, 
+                                          margin = margin(t = 0, r = 15, b = 0, l = 0)))
+#print(fig.sr.fung.yes.dix)
+
+ggdraw() +
+  draw_plot(fig.sr.fung.no.dix, 0.07, 0.5, 0.91, 0.48) +
+  draw_plot(fig.sr.fung.yes.dix, 0.07, 0, 0.91, 0.48) 
+  #draw_plot_label(c("A", "B"), c(0.05, 0.05), c(1.01, 0.51), size = 20)
+```
+
+Figure 4
+Yield Figures
+```{r}
+fig.sr.ykg <- ggplot(data=comb.sr.df, aes(x=Pop, y=ykg.mean)) + 
+        geom_bar(stat="identity",
+                 position="dodge",
+                 color="black", 
+                 size=0.75,
+                 fill = (ifelse(comb.sr.df$Pop=="Non Treated","#009dff", "#7BAD56")),) + 
+        geom_text(aes(label=y.letter, 
+                      y = (ykg.mean + (ykg.se)) + 0.2),
+                  vjust=-0.2,
+                  size=7) +
+        xlab(bquote(bold('Seeding Rate (seeds'~ha^-1*')'))) +
+        ylab(bquote(bold('Yield (kg'~ha^-1*')'))) +
+        #ggtitle("Seeding Rate - Yield (10 Site-years)") +
+        coord_cartesian(ylim = c(4000, 5000)) +
+        geom_errorbar(data=comb.sr.df,
+                      aes(ymin=pmax(pmax(ykg.mean-(ykg.se),0),0),                                    ymax=ykg.mean+(ykg.se),
+                          width=0.1)) +
+        theme_bw() +
+        theme(text = element_text(family="arial"),
+              plot.title = element_text(hjust = 0.5, 
+                                        face="bold", 
+                                        size=15), 
+              axis.text.x = element_text(face="bold",
+                                         size=14,
+                                         angle=0, 
+                                         vjust=0.5,
+                                         hjust=0.5, 
+                                         lineheight = 0.8),
+              axis.text.y = element_text(face="bold",
+                                         size=17),
+              axis.title.x = element_text(face="bold",
+                                  size=18), 
+              axis.title.y = element_text(face="bold",
+                                          size=18, 
+                                          margin = margin(t = 0, r = 10, b = 0, l = 0)))
+
+
+fig.fert.ykg <- ggplot(data=comb.fert.df, aes(x=Fert, y=ykg.mean)) + 
+        geom_bar(stat="identity",
+                 position="dodge",
+                 color="black", 
+                 size=0.75,
+                 fill = (ifelse(comb.fert.df$Fert=="Non Treated","#009dff", "#7BAD56")),) + 
+        geom_text(aes(label=y.letter, 
+                      y = (ykg.mean + (ykg.se)) + 0.2),
+                  vjust=-0.2,
+                  size=7) +
+        xlab("Soil Nitrogen Level") +
+        ylab(bquote(bold('Yield (kg'~ha^-1*')'))) +
+        #ggtitle("Fertilizer - Yield (10 Site-years)") +  
+        coord_cartesian(ylim = c(4000, 5000)) +
+        geom_errorbar(data=comb.fert.df,
+                      aes(ymin=pmax(pmax(ykg.mean-(ykg.se),0),0),                                    ymax=ykg.mean+(ykg.se),
+                          width=0.1)) +
+        theme_bw() +
+        theme(text = element_text(family="arial"),
+              plot.title = element_text(hjust = 0.5, 
+                                        face="bold", 
+                                        size=15), 
+              axis.text.x = element_text(face="bold",
+                                         size=14,
+                                         angle=0, 
+                                         vjust=0.5,
+                                         hjust=0.5),
+              axis.text.y = element_text(face="bold",
+                                         size=17),
+              axis.title.x = element_text(face="bold",
+                                  size=18, 
+                                  margin = margin(t = 10, r = 0, b = 0, l = 0)),
+              axis.title.y = element_text(face="bold",
+                                          size=18, 
+                                          margin = margin(t = 0, r = 10, b = 0, l = 0)))
+
+
+fig.fung.ykg <- ggplot(data=comb.fung.df, aes(x=Fung, y=ykg.mean)) + 
+        geom_bar(stat="identity",
+                 position="dodge",
+                 color="black", 
+                 size=0.75,
+                 fill = (ifelse(comb.fung.df$Fung=="Non Treated","#009dff", "#7BAD56")),) + 
+        geom_text(aes(label=y.letter, 
+                      y = (ykg.mean + (ykg.se)) + 0.2),
+                  vjust=-0.2,
+                  size=7) +
+        xlab("Pesticide Program") +
+        ylab(bquote(bold('Yield (kg'~ha^-1*')'))) +
+        #ggtitle("Fungicide Treatments - Yield (10 Site-years)") +  
+        coord_cartesian(ylim = c(4000, 5000)) +
+        geom_errorbar(data=comb.fung.df,
+                      aes(ymin=pmax(pmax(ykg.mean-(ykg.se),0),0),                                    ymax=ykg.mean+(ykg.se),
+                          width=0.1)) +
+        theme_bw() +
+        theme(text = element_text(family="arial"),
+              plot.title = element_text(hjust = 0.5, 
+                                        face="bold", 
+                                        size=15), 
+              axis.text.x = element_text(face="bold",
+                                         size=14,
+                                         angle=0, 
+                                         vjust=0.5,
+                                         hjust=0.5, 
+                                         lineheight = 0.8),
+              axis.text.y = element_text(face="bold",
+                                         size=17),
+              axis.title.x = element_text(face="bold",
+                                  size=18, 
+                                  margin = margin(t = 10, r = 0, b = 0, l = 0)), 
+              axis.title.y = element_text(face="bold",
+                                          size=18, 
+                                          margin = margin(t = 0, r = 10, b = 0, l = 0)))
+
+ggdraw() +
+  draw_plot(fig.sr.ykg, 0.07, 0.5, 0.44, 0.48) +
+  draw_plot(fig.fert.ykg, 0.535, 0.5, 0.44, 0.48) +
+  draw_plot(fig.fung.ykg, 0.07, 0, 0.91, 0.48) +
+  draw_plot_label(c("A", "B", "C"), c(0.05, 0.51, 0.05), c(1.01, 1.01, 0.51), size = 20)
+```
